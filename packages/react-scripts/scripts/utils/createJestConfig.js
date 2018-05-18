@@ -1,11 +1,9 @@
 // @remove-file-on-eject
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
- * All rights reserved.
  *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
  */
 'use strict';
 
@@ -13,7 +11,7 @@ const fs = require('fs');
 const chalk = require('chalk');
 const paths = require('../../config/paths');
 
-module.exports = (resolve, rootDir) => {
+module.exports = (resolve, rootDir, isEjecting) => {
   // Use this instead of `paths.testsSetup` to avoid putting
   // an absolute filename into configuration after ejecting.
   const setupTestsFile = fs.existsSync(paths.testsSetup)
@@ -23,10 +21,31 @@ module.exports = (resolve, rootDir) => {
   // TODO: I don't know if it's safe or not to just use / as path separator
   // in Jest configs. We need help from somebody with Windows to determine this.
   const config = {
-    mapCoverage: true,
     collectCoverageFrom: ['src/**/*.{js,jsx,ts,tsx}'],
     setupFiles: [resolve('config/polyfills.js')],
     setupTestFrameworkScriptFile: setupTestsFile,
+    testMatch: [
+      '<rootDir>/src/**/__tests__/**/*.(j|t)s?(x)',
+      '<rootDir>/src/**/?(*.)(spec|test).(j|t)s?(x)',
+    ],
+    testEnvironment: 'node',
+    testURL: 'http://localhost',
+    transform: {
+      '^.+\\.(js|jsx|mjs)$': isEjecting
+        ? '<rootDir>/node_modules/babel-jest'
+        : resolve('config/jest/babelTransform.js'),
+      '^.+\\.tsx?$': resolve('config/jest/typescriptTransform.js'),
+      '^.+\\.css$': resolve('config/jest/cssTransform.js'),
+      '^(?!.*\\.(js|jsx|mjs|css|json)$)': resolve(
+        'config/jest/fileTransform.js'
+      ),
+    },
+    transformIgnorePatterns: [
+      '[/\\\\]node_modules[/\\\\].+\\.(js|jsx|mjs|ts|tsx)$',
+    ],
+    moduleNameMapper: {
+      '^react-native$': 'react-native-web',
+    },
     moduleFileExtensions: [
       'web.ts',
       'ts',
@@ -37,29 +56,14 @@ module.exports = (resolve, rootDir) => {
       'web.jsx',
       'jsx',
       'json',
+      'node',
+      'mjs',
     ],
-    testMatch: [
-      '<rootDir>/src/**/__tests__/**/*.ts?(x)',
-      '<rootDir>/src/**/?(*.)(spec|test).ts?(x)',
-    ],
-    testEnvironment: 'node',
-    testURL: 'http://localhost',
-    transform: {
-      '^.+\\.css$': resolve('config/jest/cssTransform.js'),
-      '^.+\\.tsx?$': resolve('config/jest/typescriptTransform.js'),
-      '^(?!.*\\.(css|json)$)': resolve('config/jest/fileTransform.js'),
-    },
-    transformIgnorePatterns: [
-      '[/\\\\]node_modules[/\\\\].+\\.(js|jsx|ts|tsx)$',
-    ],
-    moduleNameMapper: {
-      '^react-native$': 'react-native-web',
-    },
     globals: {
       'ts-jest': {
         tsConfigFile: paths.appTsTestConfig,
       },
-    }
+    },
   };
   if (rootDir) {
     config.rootDir = rootDir;
@@ -70,6 +74,7 @@ module.exports = (resolve, rootDir) => {
     'coverageReporters',
     'coverageThreshold',
     'snapshotSerializers',
+    'moduleNameMapper',
   ];
   if (overrides) {
     supportedKeys.forEach(key => {
